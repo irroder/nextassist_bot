@@ -12,8 +12,18 @@ const App: React.FC = () => {
 	const [initializing, setInitializing] = useState(true);
 
 	useEffect(() => {
+		console.log("App: State changed", {
+			isReady,
+			user,
+			chatInstance,
+			initializing,
+		});
+	}, [isReady, user, chatInstance, initializing]);
+
+	useEffect(() => {
 		// Set header and background colors based on theme
 		if (webApp) {
+			console.log("App: Setting theme colors", { isDarkMode });
 			webApp.setHeaderColor(isDarkMode ? "#1f2937" : "#f8fafc");
 			webApp.setBackgroundColor(isDarkMode ? "#111827" : "#ffffff");
 		}
@@ -21,17 +31,21 @@ const App: React.FC = () => {
 
 	useEffect(() => {
 		if (isReady && user && chatInstance) {
+			console.log("App: Fetching board for chat instance", chatInstance);
 			// We have a chat instance, try to fetch the board
-			fetchBoard(parseInt(chatInstance)).finally(() =>
-				setInitializing(false)
-			);
+			fetchBoard(parseInt(chatInstance)).finally(() => {
+				console.log("App: Board fetch completed");
+				setInitializing(false);
+			});
 		} else if (isReady && user) {
+			console.log("App: No chat instance, first time opening");
 			// No chat instance, this might be the first time opening
 			setInitializing(false);
 		}
 	}, [isReady, user, chatInstance, fetchBoard]);
 
 	if (!isReady || !user) {
+		console.log("App: Not ready or no user", { isReady, user });
 		return <LoadingScreen message="Initializing TeamBoard..." />;
 	}
 

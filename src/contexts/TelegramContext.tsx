@@ -199,6 +199,10 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({
 			setIsDarkMode(tg.colorScheme === "dark");
 			console.log("TelegramProvider: Color scheme set", tg.colorScheme);
 
+			// Set ready state
+			setIsReady(true);
+			console.log("TelegramProvider: Real environment ready");
+
 			// Set up theme change listener
 			tg.onEvent("themeChanged", () => {
 				console.log(
@@ -211,7 +215,6 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({
 			// Inform Telegram that the Mini App is ready
 			console.log("TelegramProvider: Calling tg.ready()");
 			tg.ready();
-			setIsReady(true);
 
 			// Expand to full height
 			console.log("TelegramProvider: Calling tg.expand()");
