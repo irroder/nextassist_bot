@@ -13,7 +13,7 @@ import {
 	Star,
 	Plus,
 } from "lucide-react";
-import { init, viewport, miniApp } from "@telegram-apps/sdk";
+import { init, viewport } from "@telegram-apps/sdk";
 import "./index.css";
 
 const categories = [
@@ -30,43 +30,51 @@ export default function App() {
 	const [taskInput, setTaskInput] = useState("");
 
 	useEffect(() => {
-		// Инициализация SDK
-		init();
+		// Инициализация viewport и мета-тегов
+		const initializeApp = async () => {
+			// Добавляем viewport meta tag для мобильных устройств
+			const meta = document.createElement("meta");
+			meta.name = "viewport";
+			meta.content =
+				"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
+			document.head.appendChild(meta);
 
-		// Монтируем компоненты
-		if (viewport.mount.isAvailable()) {
-			viewport.mount();
-		}
+			// Инициализация Telegram SDK
+			await init();
 
-		if (miniApp.mountSync.isAvailable()) {
-			miniApp.mountSync();
-		}
+			// Установка высоты viewport
+			const setViewportHeight = () => {
+				document.documentElement.style.setProperty(
+					"--tg-viewport-height",
+					`${window.innerHeight}px`
+				);
+			};
 
-		// Привязываем CSS переменные
-		if (viewport.bindCssVars.isAvailable()) {
-			viewport.bindCssVars();
-		}
+			setViewportHeight();
+			window.addEventListener("resize", setViewportHeight);
 
-		// Включаем полноэкранный режим сразу после монтирования
-		const enableFullscreen = async () => {
-			if (viewport.requestFullscreen.isAvailable()) {
+			// Инициализация полноэкранного режима
+			const enableFullscreen = async () => {
 				try {
-					await viewport.requestFullscreen();
+					if (viewport.requestFullscreen.isAvailable()) {
+						await new Promise((resolve) =>
+							setTimeout(resolve, 100)
+						);
+						await viewport.requestFullscreen();
+					}
 				} catch (error) {
-					console.error("Failed to enable fullscreen:", error);
+					console.error("Fullscreen error:", error);
 				}
-			}
+			};
+
+			await enableFullscreen();
+
+			return () => {
+				window.removeEventListener("resize", setViewportHeight);
+			};
 		};
 
-		// Небольшая задержка для гарантии, что все компоненты смонтированы
-		setTimeout(enableFullscreen, 100);
-
-		return () => {
-			// При размонтировании выходим из полноэкранного режима
-			if (viewport.exitFullscreen.isAvailable()) {
-				viewport.exitFullscreen();
-			}
-		};
+		initializeApp();
 	}, []);
 
 	const toggleAddTask = (e: React.MouseEvent) => {
@@ -79,7 +87,7 @@ export default function App() {
 	};
 
 	return (
-		<div className="bg-[#1c1c1c] min-h-screen text-white p-4 relative max-w-[100vw] overflow-x-hidden">
+		<div className="app-container">
 			<div className="flex justify-between items-center mb-4">
 				<div className="flex items-center gap-2">
 					<div className="w-8 h-8 rounded-full bg-red-500"></div>
