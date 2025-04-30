@@ -1,0 +1,2252 @@
+вот информация про создание tma - telegram mini apps - Initializing
+As long as the SDK uses some internal global dependencies, before using it, the package must be configured. Not doing it, most package functions will not work at all and will throw a corresponding error.
+
+To initialize the SDK, the package provides the init function, which accepts an object with the following structure:
+
+
+interface Options {
+  /**
+   * True if SDK should accept styles sent from the Telegram application.
+   * @default true
+   */
+  acceptCustomStyles?: boolean;
+  /**
+   * Launch parameters used across the package.
+   * @default Being extracted using the `retrieveLaunchParams` function.
+   * @see retrieveLaunchParams
+   */
+  launchParams?:
+    & Omit<LaunchParamsLike, 'tgWebAppThemeParams'>
+    & Partial<Pick<LaunchParamsLike, 'tgWebAppThemeParams'>>;
+  /**
+   * Custom postEvent function.
+   * @default The `createPostEvent` function will be used with the version, specified in
+   * the `launchParams` option.
+   * @see createPostEvent
+   */
+  postEvent?: PostEventFn;
+}
+In most scenarios, a developer does not need to use these options.
+
+By calling this function, the package's global dependencies will be configured, and the package becomes ready to use.
+
+
+import { init } from '@telegram-apps/sdk';
+
+init();
+, Scopes
+This package is designed to give developers full control over its lifecycle, including the initialization process. Therefore, there are no pre-initialized global scopes available for use; developers must configure the scopes themselves.
+
+By scope, we refer to a collection of related functionality grouped into a single entity. Examples of scopes include backButton and mainButton. This design makes the SDK more intuitive and efficient to use.
+
+It's important to note that scopes are provided in the following forms:
+
+💠Components. They are exported as both a variable and a set of functions simultaneously. For instance, developers can work with the exported backButton variable or its alternative function set: showBackButton, mountBackButton, etc.
+
+⚙️Utilities. They are exported as a set of functions. These scopes are abstract and not grouped into a single variable. Examples include openLink, shareURL, etc.
+
+Effectively, exported variables are simply compositions of the same exported functions. So, backButton.isMounted and isBackButtonMounted are essentially the same entity.
+
+Here's an example:
+
+
+import {
+  backButton,
+  hideBackButton,
+  isBackButtonVisible,
+} from '@telegram-apps/sdk';
+
+isBackButtonVisible(); // false
+
+backButton.show();
+// backButton.isVisible and isBackButtonVisible are the same 
+// entity (signal). We can say the same about backButton.show 
+// and showBackButton.
+//
+// backButton.isVisible() -> true
+// isBackButtonVisible() -> true
+
+hideBackButton();
+// backButton.isVisible() -> false
+// isBackButtonVisible() -> false
+The key difference here lies in the final bundle size. Internally, the backButton export is handled through the following code:
+
+
+export * as backButton from 'somewhere';
+When not using the package source code while building the application, the bundler is more likely to make backButton a non-treeshakeable object. As a result, all dependencies from somewhere will be bundled, slightly increasing the final bundle size (though not by much).
+
+Usage Prerequisites
+Each SDK method related to 💠components or ⚙️utilities has at least two requirements:
+
+The SDK must be initialized. This ensures that you are using valid global dependencies (such as postEvent).
+
+import { init } from '@telegram-apps/sdk';
+
+init();
+The method must be run inside Telegram Mini Apps. Calling the method outside Telegram Mini Apps will not produce the expected behavior.
+For component-related methods, there is an additional requirement:
+
+The parent component must be mounted. This ensures that you are using a properly configured component.
+
+import { init, backButton } from '@telegram-apps/sdk';
+
+// Initialize the SDK.
+init();
+
+// Mount the Back Button component.
+backButton.mount();
+When all requirements are met, the method call becomes safe.
+
+Methods Availability
+To check if a method is safe to call (available), use the isAvailable() signal:
+
+
+import { backButton } from '@telegram-apps/sdk';
+
+if (backButton.show.isAvailable()) {
+  backButton.show();
+}
+This signal performs all checks described in the Usage Prerequisites section and returns true if the current state satisfies them.
+
+As an alternative, you may find the ifAvailable(...args) method useful. It calls the original function with the provided arguments only if it is available (isAvailable() returns true):
+
+
+import { backButton } from '@telegram-apps/sdk';
+
+backButton.show.ifAvailable();
+In case the original method (backButton.show in this case) is unavailable, the ifAvailable method call will return a tuple with false value. Otherwise [true, *result*] will be received.
+
+Optimizing Bundle
+TIP
+
+The SDK works efficiently out of the box, so there is generally no need to follow the optimizations described in this section. However, these guidelines can be helpful if you want to maximize the package's efficiency in specific scenarios.
+
+Let’s look at how we can use the package more efficiently:
+
+Using functions exclusively allows the bundler to tree-shake unused scope code.
+
+import { showBackButton, backButton } from '@telegram-apps/sdk';
+
+showBackButton();
+// Only showBackButton's source code will be bundled.
+
+backButton.show();
+// All backButton dependencies will be bundled, even 
+// if not used in the code: backButton.show(), 
+// backButton.hide(), backButton.isVisible(), etc.
+Configure the bundler to use the source code instead of the built version.
+
+import { backButton } from '@telegram-apps/sdk';
+
+backButton.show();
+// Only backButton.show's source code will be bundled 
+// because the bundler is smart enough to understand 
+// that backButton.show is just the showBackButton 
+// function, so only its source code is bundled.
+Here's an example of a Vite config using the resolve option:
+
+
+import { defineConfig } from 'vite';
+import { resolve } from 'node:path';
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@telegram-apps/sdk': resolve('node_modules/@telegram-apps/sdk/src'),
+    },
+  },
+});
+, Usage Tips
+Avoid Using With Telegram SDK
+Telegram provides a file telegram-web-app.js. When using @telegram-apps/sdk, you must avoid using it alongside the SDK provided by Telegram. This is because both packages use the same communication channel for transmitting events and calling methods.
+
+What if I use both packages?
+
+In this case, some of these packages will not receive events sent from the native Telegram application, which will surely lead to bugs.
+
+Installing the SDK
+Before installing the package, it is important to understand what specifically must be installed. This depends on the technologies you are planning to use.
+
+If your core library is one of the following, you should install a package specific to your main library instead of @telegram-apps/sdk:
+
+React: @telegram-apps/sdk-react
+Vue: @telegram-apps/sdk-vue
+Svelte: @telegram-apps/sdk-svelte
+For example, if your main library is React, you should install @telegram-apps/sdk-react instead of @telegram-apps/sdk.
+
+Here is the command to install the package:
+
+
+pnpm
+
+npm
+
+yarn
+
+pnpm i @telegram-apps/sdk-react
+If your main library is not on the list specified above or if you prefer a pure TypeScript solution, install the @telegram-apps/sdk package:
+
+
+pnpm
+
+npm
+
+yarn
+
+pnpm i @telegram-apps/sdk
+Avoid installing both packages
+
+Installing both @telegram-apps/sdk and @telegram-apps/sdk-react (for example) may lead to bugs due to SDK package duplication, resulting in incorrect application behavior.
+
+Start with @telegram-apps/create-mini-app
+
+To avoid potential issues with bootstrapping your project, consider using the @telegram-apps/create-mini-app package. This will quickly generate a properly configured application for you.
+
+Initialize the SDK
+The SDK provides a list of components that might seem ready to use once imported, but this is only partially true.
+
+It’s important to understand that the SDK does not have any side effects. To avoid various issues, it doesn’t perform operations automatically upon import. Instead, you need to initialize it manually.
+
+By default, the SDK is uninitialized and not ready for use. All components remain unmounted. To initialize the SDK and unlock not only the components’ mount method but also other non-component-related methods, you must use the init function.
+
+
+import { init } from '@telegram-apps/sdk';
+
+init();
+After calling this, it is now safe to mount any components you wish to use in your application.
+
+Mount Used Components
+In the previous section, we initialized the SDK, allowing us to use components.
+
+Before using specific components in your application, you must mount them. Not mounting components will cause their methods to throw errors. For example, the following code will cause issues:
+
+
+import { init, backButton } from '@telegram-apps/sdk';
+
+// Initialize the SDK.
+init();
+
+// Attempt to show the Back Button.
+backButton.show();
+// Error: The backButton component was not mounted.
+To avoid this issue, mount the component before using its methods:
+
+
+import { init, backButton } from '@telegram-apps/sdk';
+
+// Initialize the SDK.
+init();
+
+// Mount the Back Button.
+backButton.mount();
+
+// Show the Back Button.
+backButton.show();
+TIP
+
+The mount-checking mechanism ensures that you are working with a properly initialized component.
+
+Always Check Availability
+Not all Telegram Mini Apps methods were implemented in a single release. Some may have been implemented years ago, while others were introduced only recently.
+
+Because there are many users with different versions of the native Telegram application, you must check if a method is available on their device before using it:
+
+
+import { backButton } from '@telegram-apps/sdk';
+
+// ... the SDK is already initialized, and the Back Button is mounted.
+if (backButton.show.isAvailable()) {
+  backButton.show();
+}
+The isAvailable() method verifies if the function is currently available and can be safely called. It performs the following checks:
+
+The current environment is Telegram Mini Apps
+The SDK is initialized
+The method is supported by the current Telegram Mini Apps version
+The parent component is mounted
+Not using this signal and simply calling the method may lead to errors related to one of the above checks.
+
+If you don’t want to perform this check every time and the result of the method execution is not crucial, use the ifAvailable(...args) method. This method accepts the same parameters as the original function:
+
+
+import { backButton } from '@telegram-apps/sdk';
+
+// ... the SDK is already initialized, and the Back Button is mounted.
+backButton.show.ifAvailable();
+, Back Button
+The 💠component responsible for the Telegram Mini Apps back button.
+
+Checking Support
+To check if the back button is supported by the current Telegram Mini Apps version, use the isSupported method:
+
+
+Variable
+
+Functions
+
+import { backButton } from '@telegram-apps/sdk';
+
+backButton.isSupported(); // boolean
+Mounting
+Before using this component, it is necessary to mount it to work with properly configured properties. To do so, use the mount method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { backButton } from '@telegram-apps/sdk';
+
+if (backButton.mount.isAvailable()) {
+  backButton.mount();
+  backButton.isMounted(); // true
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+backButton.unmount();
+backButton.isMounted(); // false
+Showing and Hiding
+To change the button's visibility, use the hide() and show() methods. These methods update the isVisible signal property value.
+
+
+Variable
+
+Functions
+
+if (backButton.show.isAvailable()) {
+  backButton.show();
+  backButton.isVisible(); // true
+}
+
+if (backButton.hide.isAvailable()) {
+  backButton.hide();
+  backButton.isVisible(); // false
+}
+Tracking Click
+To add a button click listener, use the onClick method. It returns a function to remove the bound listener. Alternatively, you can use the offClick method.
+
+
+Variable
+
+Functions
+
+if (backButton.onClick.isAvailable()) {
+  function listener() {
+    console.log('Clicked!');
+  }
+
+  const offClick = backButton.onClick(listener);
+  offClick();
+  // or
+  backButton.onClick(listener);
+  backButton.offClick(listener);
+}
+, Biometry
+The 💠component responsible for biometry functionality for Telegram Mini Apps.
+
+Checking Support
+To check if biometry is supported by the current Telegram Mini Apps version, use the isSupported method:
+
+
+Variable
+
+Functions
+
+import { biometry } from '@telegram-apps/sdk';
+
+biometry.isSupported(); // boolean
+Mounting
+Before using the component, it must be mounted.
+
+This process is asynchronous, as biometry data needs to be requested from the Telegram application. The isMounting signal will be set to true during the process and updated to false when complete.
+
+If mounting is successful, the isMounted signal will be set to true. If errors occur, the mountError signal will reflect the error.
+
+
+Variable
+
+Functions
+
+if (biometry.mount.isAvailable()) {
+  try {
+    const promise = biometry.mount();
+    biometry.isMounting(); // true
+    await promise;
+    biometry.isMounting(); // false
+    biometry.isMounted(); // true
+  } catch (err) {
+    biometry.mountError(); // equals "err"
+    biometry.isMounting(); // false
+    biometry.isMounted(); // false
+  }
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+biometry.unmount();
+biometry.isMounted(); // false
+Requesting Biometry Access
+To request biometry access, use the requestAccess method. It returns a promise with boolean value indicating whether access was granted by the user.
+
+
+Variable
+
+Functions
+
+if (biometry.requestAccess.isAvailable()) {
+  const granted = await biometry.requestAccess(); // boolean
+}
+Authenticating
+To authenticate a user and retrieve a previously saved token, use the authenticate method.
+
+It optionally accepts an object with the following properties:
+
+reason?: string: a reason for authentication to display to the user.
+The method returns an object with status ('failed' or 'authorized') and, if successful, a token: string.
+
+
+Variable
+
+Functions
+
+if (biometry.authenticate.isAvailable()) {
+  const { status, token } = await biometry.authenticate({
+    reason: 'Please!',
+  });
+
+  if (status === 'authorized') {
+    console.log(`Authorized. Token: ${token}`);
+  } else {
+    console.log('Not authorized');
+  }
+}
+Updating Token
+To update the token stored in local secure storage, use the updateToken method.
+
+The method accepts an optional object with the reason and token properties. If no token is provided, the existing token will be deleted.
+
+It returns a promise with boolean indicating if any changes were made.
+
+
+Variable
+
+Functions
+
+if (biometry.updateToken.isAvailable()) {
+  const updated = await biometry.updateToken({
+    reason: 'Want to delete',
+  });
+
+  await biometry.updateToken({
+    reason: 'Will set a new one',
+    token: 'new token',
+  });
+}
+Opening Settings
+To open the biometry-related settings modal, use the openSettings method. This method can only be triggered in response to user interaction.
+
+
+Variable
+
+Functions
+
+if (biometry.openSettings.isAvailable()) {
+  biometry.openSettings();
+}
+, Closing Behavior
+The 💠component responsible for the Telegram Mini Apps closing behavior.
+
+Mounting
+Before using this component, it is necessary to mount it to work with properly configured properties. To do so, use the mount method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { closingBehavior } from '@telegram-apps/sdk';
+
+if (closingBehavior.mount.isAvailable()) {
+  closingBehavior.mount();
+  closingBehavior.isMounted(); // true
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+closingBehavior.unmount();
+closingBehavior.isMounted(); // false
+Closing Confirmation
+To change the closing confirmation behavior, use the enableConfirmation() and disableConfirmation() methods. These methods update the isConfirmationEnabled signal property value.
+
+
+Variable
+
+Functions
+
+if (closingBehavior.enableConfirmation.isAvailable()) {
+  closingBehavior.enableConfirmation();
+  closingBehavior.isConfirmationEnabled(); // true
+}
+
+if (closingBehavior.disableConfirmation.isAvailable()) {
+  closingBehavior.disableConfirmation();
+  closingBehavior.isConfirmationEnabled(); // false
+}
+, Cloud Storage
+The 💠component responsible for managing the cloud storage in Telegram Mini Apps.
+
+Checking Support
+To check if the cloud storage is supported by the current Telegram Mini Apps version, the isSupported method is used:
+
+
+Variable
+
+Functions
+
+import { cloudStorage } from '@telegram-apps/sdk';
+
+cloudStorage.isSupported(); // boolean
+Setting Items
+To set a key value, use the setItem method.
+
+
+Variable
+
+Functions
+
+if (cloudStorage.setItem.isAvailable()) {
+  await cloudStorage.setItem('a', 'a-value');
+}
+Getting Keys
+To retrieve a list of all existing keys, use the getKeys method.
+
+
+Variable
+
+Functions
+
+if (cloudStorage.getKeys.isAvailable()) {
+  const keys = await cloudStorage.getKeys(); // ['a', 'b', 'c']
+}
+To get the value of a specific key or multiple keys, use the getItem method.
+
+
+Variable
+
+Functions
+
+if (cloudStorage.getItem.isAvailable()) {
+  const nonExistent = await cloudStorage.getItem('non-existent');
+  // The result is an empty string: ''
+
+  const existent = await cloudStorage.getItem('a');
+  // The result is the value of the 'a' key. Example: 'a-value'
+
+  const values = await cloudStorage.getItem(['a', 'b', 'non-existent']);
+  // The result is a record of the keys 'a', 'b', and 'non-existent'. 
+  // Example:
+  // { 
+  //   a: 'a-value', 
+  //   b: 'b-value', 
+  //   'non-existent': '', 
+  // }
+}
+Deleting Items
+To delete a key or a list of keys, use the deleteItem method.
+
+
+Variable
+
+Functions
+
+if (cloudStorage.deleteItem.isAvailable()) {
+  await cloudStorage.deleteItem('a');
+  await cloudStorage.deleteItem(['a', 'b', 'c']);
+}
+, Haptic Feedback
+The 💠component responsible for the Telegram Mini Apps haptic feedback.
+
+Checking Support
+To check if the haptic feedback is supported by the current Telegram Mini Apps version, the isSupported method is used:
+
+
+Variable
+
+Functions
+
+import { hapticFeedback } from '@telegram-apps/sdk';
+
+hapticFeedback.isSupported(); // boolean
+Impact Occurred
+impactOccurred is the method that signals an impact event. The Telegram app may play the appropriate haptic feedback based on the style value passed.
+
+
+Variable
+
+Functions
+
+if (hapticFeedback.impactOccurred.isAvailable()) {
+  hapticFeedback.impactOccurred('medium');
+}
+The available styles for the impact haptic event are:
+
+light: indicates a collision between small or lightweight UI objects.
+medium: indicates a collision between medium-sized or medium-weight UI objects.
+heavy: indicates a collision between large or heavyweight UI objects.
+rigid: indicates a collision between hard or inflexible UI objects.
+soft: indicates a collision between soft or flexible UI objects.
+Notification Occurred
+notificationOccurred is the method that signals a task or action has succeeded, failed, or triggered a warning. The Telegram app may play the appropriate haptic feedback based on the type value passed.
+
+
+Variable
+
+Functions
+
+if (hapticFeedback.notificationOccurred.isAvailable()) {
+  hapticFeedback.notificationOccurred('success');
+}
+The types of notification events are:
+
+error: indicates that a task or action has failed.
+success: indicates that a task or action has been completed successfully.
+warning: indicates that a task or action has triggered a warning.
+Selection Changed
+selectionChanged is the method that signals a user has changed a selection. The Telegram app may play the appropriate haptic feedback.
+
+Use this feedback only when the selection changes, not when a selection is made or confirmed.
+
+
+Variable
+
+Functions
+
+if (hapticFeedback.selectionChanged.isAvailable()) {
+  hapticFeedback.selectionChanged();
+}
+, Init Data
+The 💠component responsible for the Telegram Mini Apps init data.
+
+Restoring
+To restore the component state, use the restore method.
+
+
+Variable
+
+Functions
+
+import { initData } from '@telegram-apps/sdk';
+
+initData.restore();
+Parsing
+To parse the value as init data, use the parseInitData function.
+
+
+import { parseInitData } from '@telegram-apps/sdk';
+
+const initData = parseInitData('auth_date=123&query_id=anQQ231vs&...');
+// {
+//   user: {
+//     id: 99281932,
+//     firstName: 'Andrew',
+//     lastName: 'Rogue',
+//     username: 'rogue',
+//     languageCode: 'en',
+//     isPremium: true,
+//     allowsWriteToPm: true,
+//   },
+//   hash: 'abcedef123',
+//   authDate: Date(1716922846000),
+//   startParam: 'debug',
+//   chatType: 'sender',
+//   chatInstance: '8428209589180549439',
+// };
+The function returns the init data object with deeply camel-cased properties.
+
+Signals
+This section provides a complete list of signals related to the init data.
+
+authDate
+Return type: Date | undefined
+
+The date the initialization data was created.
+
+
+Variable
+
+Functions
+
+initData.authDate(); // Date(1727368894000)
+canSendAfter
+Return type: number | undefined
+
+The number of seconds after which a message can be sent via the method answerWebAppQuery.
+
+
+Variable
+
+Functions
+
+initData.canSendAfter(); // 3600
+canSendAfterDate
+Return type: Date | undefined
+
+canSendAfter but as a Date.
+
+
+Variable
+
+Functions
+
+initData.canSendAfterDate(); // Date(1727368897600)
+chat
+Return type: undefined or Chat with camel-cased properties.
+
+An object containing data about the chat where the bot was launched via the attachment menu.
+
+NOTE
+
+Returned for supergroups, channels and group chats – only for Mini Apps launched via the attachment menu.
+
+
+Variable
+
+Functions
+
+initData.chat();
+// {
+//   id: 7728725378876215,
+//   type: 'group',
+//   title: '@BotFather',
+//   photoUrl: 'https://example.com/image.png',
+//   username: 'botfather'
+// }
+chatType
+Return type: string | undefined
+
+The type of chat from which the Mini Apps was opened. Values:
+
+sender
+private
+group
+supergroup
+channel
+NOTE
+
+Returned only for applications opened by direct link.
+
+
+Variable
+
+Functions
+
+initData.chatType(); // 'group'
+chatInstance
+Return type: string | undefined
+
+A global identifier indicating the chat from which the Mini Apps was opened.
+
+WARNING
+
+Returned only for applications opened by direct link.
+
+
+Variable
+
+Functions
+
+initData.chatInstance(); // 'group'
+hash
+Return type: string | undefined
+
+Initialization data signature.
+
+
+Variable
+
+Functions
+
+initData.hash(); // 'group'
+queryId
+Return type: string | undefined
+
+The unique session ID of the Mini App. Used in the process of sending a message via the method answerWebAppQuery.
+
+
+Variable
+
+Functions
+
+initData.queryId(); // 'group'
+raw
+Return type: string | undefined
+
+A raw string representation of the initialization data.
+
+
+Variable
+
+Functions
+
+initData.raw(); // 'user=...&chat=...&...'
+receiver
+Return type: undefined or User with camel-cased properties.
+
+An object containing data about the chat partner of the current user in the chat where the bot was launched via the attachment menu.
+
+NOTE
+
+Returned only for private chats and only for Mini Apps launched via the attachment menu.
+
+
+Variable
+
+Functions
+
+initData.user();
+// {
+//   addedToAttachmentMenu: false,
+//   allowsWriteToPm: true,
+//   isPremium: true,
+//   firstName: 'Pavel',
+//   id: 78262681,
+//   isBot: false,
+//   lastName: 'Durov',
+//   languageCode: 'ru',
+//   photoUrl: 'https://example.com/image.png',
+//   username: 'durove',
+// }
+state
+Return type: undefined or InitData with deeply camel-cased properties.
+
+An object containing the initialization data in object format.
+
+
+Variable
+
+Functions
+
+initData.state();
+startParam
+Return type: string | undefined
+
+The value of the startattach or startapp query parameter specified in the link.
+
+
+Variable
+
+Functions
+
+initData.startParam(); // 'my-value'
+user
+Return type: undefined or User with camel-cased properties.
+
+An object containing information about the current user.
+
+
+Variable
+
+Functions
+
+initData.user();
+// {
+//   addedToAttachmentMenu: false,
+//   allowsWriteToPm: true,
+//   isPremium: true,
+//   firstName: 'Pavel',
+//   id: 78262681,
+//   isBot: false,
+//   lastName: 'Durov',
+//   languageCode: 'ru',
+//   photoUrl: 'https://example.com/image.png',
+//   username: 'durove',
+// }
+, Invoice
+The 💠component responsible for the Telegram invoices.
+
+Checking Support
+To check if invoices are supported by the current Telegram Mini Apps version, the isSupported method is used:
+
+
+Variable
+
+Functions
+
+import { invoice } from '@telegram-apps/sdk';
+
+invoice.isSupported(); // boolean
+Opening
+To open an invoice, it is required to use the open method. This method allows opening invoices using their URLs or slugs.
+
+Opening an invoice in URL mode requires passing the second argument equal to url, so the method will interpret the passed value as a URL.
+
+Calling the method updates the isOpened signal property value.
+
+
+Variable
+
+Functions
+
+import { invoice } from '@telegram-apps/sdk';
+
+if (invoice.open.isAvailable()) {
+  invoice.isOpened(); // false
+  const promise = invoice.open('abIIks213');
+  invoice.isOpened(); // true
+  const status = await promise;
+  invoice.isOpened(); // false
+
+  // Or in URL mode:
+  await invoice.open('https://t.me/invoice/abIIks213', 'url');
+}
+, Location Manager
+The 💠component responsible for location tracking functionality for Telegram Mini Apps.
+
+Checking Support
+To check if location tracking is supported by the current Telegram Mini Apps version, use the isSupported signal:
+
+
+Variable
+
+Functions
+
+import { locationManager } from '@telegram-apps/sdk';
+
+locationManager.isSupported(); // boolean
+Mounting
+Before using the component, it must be mounted.
+
+This process is asynchronous, as location manager settings need to be requested from the Telegram application. The isMounting signal will be set to true during the process and updated to false when complete.
+
+If mounting is successful, the isMounted signal will be set to true. If errors occur, the mountError signal will reflect the error.
+
+
+Variable
+
+Functions
+
+if (locationManager.mount.isAvailable()) {
+  try {
+    const promise = locationManager.mount();
+    locationManager.isMounting(); // true
+    await promise;
+    locationManager.isMounting(); // false
+    locationManager.isMounted(); // true
+  } catch (err) {
+    locationManager.mountError(); // equals "err"
+    locationManager.isMounting(); // false
+    locationManager.isMounted(); // false
+  }
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+locationManager.unmount();
+locationManager.isMounted(); // false
+Requesting Location
+To request the current location, use the requestLocation method. It returns a cancelable promise with an object, describing the current device location.
+
+The object contains the following numeric properties:
+
+Property	Description
+latitude	Latitude in degrees.
+longitude	Longitude in degrees.
+altitude	Optional. Altitude above sea level in meters.
+course	Optional. The direction the device is moving in degrees.
+speed	Optional. The speed of the device in m/s.
+horizontal_accuracy	Optional. Accuracy of the latitude and longitude values in meters.
+vertical_accuracy	Optional. Accuracy of the altitude value in meters.
+course_accuracy	Optional. Accuracy of the course value in degrees.
+speed_accuracy	Optional. Accuracy of the speed value in m/s.
+
+Variable
+
+Functions
+
+if (locationManager.requestLocation.isAvailable()) {
+  const location = await locationManager.requestLocation();
+}
+Opening Settings
+To open the location manager-related settings modal, use the openSettings method. This method can only be triggered in response to user interaction.
+
+
+Variable
+
+Functions
+
+if (locationManager.openSettings.isAvailable()) {
+  locationManager.openSettings();
+}
+, Main Button
+The 💠component responsible for the Telegram Mini Apps main button.
+
+Mounting
+Before using this component, it is necessary to mount it to work with properly configured properties. To do so, use the mount method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { mainButton } from '@telegram-apps/sdk';
+
+if (mainButton.mount.isAvailable()) {
+  mainButton.mount();
+  mainButton.isMounted(); // true
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+mainButton.unmount(); 
+mainButton.isMounted(); // false
+WARNING
+
+This component's properties depend on values from the Theme Params component. Make sure to mount Theme Params before using the Main Button.
+
+Settings Properties
+To update the button properties, use the setParams method. It accepts an object with optional properties, each responsible for its own button trait.
+
+In turn, calling this method updates such signals as backgroundColor, hasShineEffect, isVisible, isEnabled, isLoaderVisible, state, textColor and text.
+
+
+Variable
+
+Functions
+
+if (mainButton.setParams.isAvailable()) {
+  mainButton.setParams({
+    backgroundColor: '#000000',
+    hasShineEffect: true,
+    isEnabled: true,
+    isLoaderVisible: true,
+    isVisible: true,
+    text: 'My text',
+    textColor: '#ffffff'
+  });
+  mainButton.backgroundColor(); // '#000000'
+  mainButton.hasShineEffect(); // true
+  mainButton.isEnabled(); // true
+  mainButton.isLoaderVisible(); // true
+  mainButton.isVisible(); // true
+  mainButton.text(); // 'My text'
+  mainButton.textColor(); // '#ffffff'
+
+  mainButton.state();
+  // {
+  //   backgroundColor: '#000000',
+  //   hasShineEffect: true,
+  //   isActive: true,
+  //   isLoaderVisible: true,
+  //   isVisible: true,
+  //   text: 'My text',
+  //   textColor: '#ffffff'
+  // }
+}
+Tracking Click
+To add a button click listener, use the onClick method. It returns a function to remove the bound listener. Alternatively, you can use the offClick method.
+
+
+Variable
+
+Functions
+
+if (mainButton.onClick.isAvailable()) {
+  function listener() {
+    console.log('Clicked!');
+  }
+
+  const offClick = mainButton.onClick(listener);
+  offClick();
+  // or
+  mainButton.onClick(listener);
+  mainButton.offClick(listener);
+}
+, Mini App
+The 💠component responsible for managing functionality within Telegram Mini Apps.
+
+Mounting
+Before using the component, it must be mounted.
+
+Actual sync mount
+
+To mount the component, use the mountSync method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { miniApp } from '@telegram-apps/sdk';
+
+if (miniApp.mountSync.isAvailable()) {
+  miniApp.mountSync();
+  miniApp.isMounted(); // true
+}
+Deprecated async mount
+
+This process is asynchronous, as theme parameters need to be requested from the Telegram application. The isMounting signal will be set to true during the process and updated to false when complete.
+
+If mounting is successful, the isMounted signal will be set to true. If errors occur, the mountError signal will reflect the error.
+
+
+Variable
+
+Functions
+
+if (miniApp.mount.isAvailable()) {
+  try {
+    const promise = miniApp.mount();
+    miniApp.isMounting(); // true
+    await promise;
+    miniApp.isMounting(); // false
+    miniApp.isMounted(); // true
+  } catch (err) {
+    miniApp.mountError(); // equals "err"
+    miniApp.isMounting(); // false
+    miniApp.isMounted(); // false
+  }
+}
+INFO
+
+The mount method also mounts the Theme Params scope to extract correctly configured values.
+
+To unmount the component, use the unmount method:
+
+
+Variable
+
+Functions
+
+miniApp.unmount();
+miniApp.isMounted(); // false
+Binding CSS Variables
+To expose the miniApp properties via CSS variables, use the bindCssVars method. The isCssVarsBound signal property is updated after the method is called.
+
+This method optionally accepts a function that transforms the values bgColor and headerColor into CSS variable names. By default, values are converted to kebab case with the prefix --tg-.
+
+
+Variable
+
+Functions
+
+if (miniApp.bindCssVars.isAvailable()) {
+  miniApp.bindCssVars();
+  // Creates CSS variables like:
+  // --tg-bg-color: #aabbcc
+  // --tg-header-color: #aabbcc
+
+  miniApp.bindCssVars(key => `--my-prefix-${key}`);
+  // Creates CSS variables like:
+  // --my-prefix-bgColor: #aabbcc
+  // --my-prefix-headerColor: #aabbcc
+
+  miniApp.isCssVarsBound(); // true
+}
+Header Color
+To change the mini application header color, the method setHeaderColor is used. In turn, calling this method updates the headerColor signal property value.
+
+The method accepts either an RGB color value or one of the following strings: bg_color, secondary_bg_color.
+
+
+Variable
+
+Functions
+
+if (miniApp.setHeaderColor.isAvailable()) {
+  miniApp.setHeaderColor('bg_color');
+  miniApp.headerColor(); // 'bg_color'
+}
+
+if (
+  miniApp.setHeaderColor.isAvailable()
+  && miniApp.setHeaderColor.supports('rgb')
+) {
+  miniApp.setHeaderColor('#aabbcc');
+  miniApp.headerColor(); // '#aabbcc'
+}
+Background Color
+To update the mini application background color, use the setBackgroundColor method. Calling this method updates the headerColor signal property value.
+
+
+Variable
+
+Functions
+
+if (miniApp.setBackgroundColor.isAvailable()) {
+  miniApp.setBackgroundColor('#ffffff');
+  miniApp.backgroundColor(); // '#ffffff'
+}
+Active State
+The mini application becomes inactive if it is wrapped into the bottom native Telegram client tray or if the currently active tab of the mini apps browser is changed to another one.
+
+To track if the mini application is currently active, use the isActive signal.
+
+
+Variable
+
+Functions
+
+miniApp.isActive();
+Methods
+close
+To close the mini application, use the close method.
+
+
+Variable
+
+Functions
+
+if (miniApp.close.isAvailable()) {
+  miniApp.close();
+}
+ready
+To signal that the Mini App is ready to be displayed, use the ready method. Once called, the loading placeholder is hidden, and the Mini App is shown.
+
+
+Variable
+
+Functions
+
+if (miniApp.ready.isAvailable()) {
+  miniApp.ready();
+}
+TIP
+
+Call this function as early as possible after loading essential interface elements to ensure a smooth user experience.
+
+, Popup
+The 💠component responsible for the Telegram Mini Apps popup.
+
+Checking Support
+To check if the popup is supported by the current Telegram Mini Apps version, the isSupported method is used:
+
+
+Variable
+
+Functions
+
+import { popup } from '@telegram-apps/sdk';
+
+popup.isSupported(); // boolean
+Opening
+To open a popup, it is required to call the open method specifying popup properties: title, message, and a list of up to 3 buttons.
+
+The method returns a promise, which will be fulfilled with the clicked button identifier. In the case where the user didn't click any button, the method will return null.
+
+Calling the method updates the isOpened signal property value.
+
+
+Variable
+
+Functions
+
+import { popup } from '@telegram-apps/sdk';
+
+if (popup.open.isAvailable()) {
+  // popup.isOpened() -> false
+  const promise = popup.open({
+    title: 'Hello!',
+    message: 'Here is a test message.',
+    buttons: [{ id: 'my-id', type: 'default', text: 'Default text' }],
+  });
+  // popup.isOpened() -> true
+  const buttonId = await promise;
+  // popup.isOpened() -> false
+}
+, QR Scanner
+The 💠component which provides the QR scanner functionality.
+
+Opening and Closing
+To open the QR scanner, a developer should use the open method. It accepts the optional text property responsible for displaying the scanner title properties, depending on the open style.
+
+In turn, calling the open method updates the isOpened signal property value.
+
+To close the scanner, use the close method.
+
+Callback Style
+Accepts the onCaptured option, which is a function receiving the scanned QR content. This method returns a promise which will be resolved upon the scanner was closed.
+
+
+Variable
+
+Functions
+
+import { qrScanner } from '@telegram-apps/sdk';
+
+if (qrScanner.open.isAvailable()) {
+  qrScanner.isOpened(); // false
+  const promise = qrScanner.open({
+    text: 'Scan the QR',
+    onCaptured(qr) {
+      if (qr === 'qr-content-we-expect') {
+        qrScanner.close();
+      }
+    },
+  });
+  qrScanner.isOpened(); // true
+  await promise;
+  qrScanner.isOpened(); // false
+}
+Promise Style
+Accepts the optional capture option receiving the scanned QR content and returning true if it should be captured and promise resolved. If omitted, the first captured QR content will be resolved. The promise may be resolved to undefined, if the scanner was closed due to some reason.
+
+
+Variable
+
+Functions
+
+import { qrScanner } from '@telegram-apps/sdk';
+
+if (qrScanner.open.isAvailable()) {
+  // Getting the first captured QR.
+  qrScanner.isOpened(); // false
+  let promise = qrScanner.open({ text: 'Scan any QR' });
+  qrScanner.isOpened(); // true
+  await promise;
+  qrScanner.isOpened(); // false
+
+  // Getting some specific QR.
+  qrScanner.isOpened(); // false
+  promise = qrScanner.open({
+    text: 'Scan some specific QR',
+    capture(qr) {
+      return qr === 'some-specific-qr';
+    },
+  });
+  qrScanner.isOpened(); // true
+  await promise;
+  qrScanner.isOpened(); // false
+}
+, Secondary Button
+The 💠component responsible for the Telegram Mini Apps Secondary Button.
+
+Checking Support
+To check if the Secondary Button is supported by the current Telegram Mini Apps version, use the isSupported method:
+
+
+Variable
+
+Functions
+
+import { secondaryButton } from '@telegram-apps/sdk';
+
+secondaryButton.isSupported(); // boolean
+Mounting
+Before using this component, it is necessary to mount it to work with properly configured properties. To do so, use the mount method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { secondaryButton } from '@telegram-apps/sdk';
+
+if (secondaryButton.mount.isAvailable()) {
+  secondaryButton.mount();
+  secondaryButton.isMounted(); // true
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+secondaryButton.unmount();
+secondaryButton.isMounted(); // false
+WARNING
+
+This component's properties depend on values from the Mini App and Theme Params components. Specifically, the Secondary Button uses the Mini App's bottomBarBgColor and some of the Theme Params colors. Make sure to mount these components before using the Secondary Button.
+
+Settings Properties
+To update the button properties, use the setParams method. It accepts an object with optional properties, each responsible for its own button trait.
+
+In turn, calling this method updates such signals as backgroundColor, hasShineEffect, isVisible, isEnabled, isLoaderVisible, position, state, textColor and text.
+
+
+Variable
+
+Functions
+
+if (secondaryButton.setParams.isAvailable()) {
+  secondaryButton.setParams({
+    backgroundColor: '#000000',
+    hasShineEffect: true,
+    isEnabled: true,
+    isLoaderVisible: true,
+    isVisible: true,
+    position: 'top',
+    text: 'My text',
+    textColor: '#ffffff'
+  });
+  secondaryButton.backgroundColor(); // '#000000'
+  secondaryButton.hasShineEffect(); // true
+  secondaryButton.isEnabled(); // true
+  secondaryButton.isLoaderVisible(); // true
+  secondaryButton.isVisible(); // true
+  secondaryButton.position(); // 'top'
+  secondaryButton.text(); // 'My text'
+  secondaryButton.textColor(); // '#ffffff'
+
+  secondaryButton.state();
+  // {
+  //   backgroundColor: '#000000',
+  //   hasShineEffect: true,
+  //   isActive: true,
+  //   isLoaderVisible: true,
+  //   isVisible: true,
+  //   position: 'top',
+  //   text: 'My text',
+  //   textColor: '#ffffff'
+  // }
+}
+Tracking Click
+To add a button click listener, use the onClick method. It returns a function to remove the bound listener. Alternatively, you can use the offClick method.
+
+
+Variable
+
+Functions
+
+if (secondaryButton.onClick.isAvailable()) {
+  function listener() {
+    console.log('Clicked!');
+  }
+
+  const offClick = secondaryButton.onClick(listener);
+  offClick();
+  // or
+  secondaryButton.onClick(listener);
+  secondaryButton.offClick(listener);
+}
+, Settings Button
+The 💠component responsible for the Telegram Mini Apps settings button.
+
+Checking Support
+To check if the settings button supported by the current Telegram Mini Apps version, the isSupported method is used:
+
+
+Variable
+
+Functions
+
+import { settingsButton } from '@telegram-apps/sdk';
+
+settingsButton.isSupported(); // boolean
+Mounting
+Before using the component, it is necessary to mount it to work with properly configured properties. To do so, use the mount method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { settingsButton } from '@telegram-apps/sdk';
+
+if (settingsButton.mount.isAvailable()) {
+  settingsButton.mount();
+  settingsButton.isMounted(); // true
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+settingsButton.unmount();
+settingsButton.isMounted(); // false
+Showing and Hiding
+To change the button's visibility, use the hide() and show() methods. These methods update the isVisible signal property value.
+
+
+Variable
+
+Functions
+
+if (settingsButton.show.isAvailable()) {
+  settingsButton.show();
+  settingsButton.isVisible(); // true
+}
+
+if (settingsButton.hide.isAvailable()) {
+  settingsButton.hide();
+  settingsButton.isVisible(); // false
+}
+Tracking Click
+To add a button click listener, use the onClick method. It returns a function to remove the bound listener. Alternatively, you can use the offClick method.
+
+
+Variable
+
+Functions
+
+if (settingsButton.onClick.isAvailable()) {
+  function listener() {
+    console.log('Clicked!');
+  }
+
+  const offClick = settingsButton.onClick(listener);
+  offClick();
+  // or
+  settingsButton.onClick(listener);
+  settingsButton.offClick(listener);
+}
+, Swipe Behavior
+The 💠component responsible for the Telegram Mini Apps swipe behavior.
+
+Checking Support
+To check if the swipe behavior supported by the current Telegram Mini Apps version, the isSupported method is used:
+
+
+Variable
+
+Functions
+
+import { swipeBehavior } from '@telegram-apps/sdk';
+
+swipeBehavior.isSupported(); // boolean
+Mounting
+Before using the component, it is necessary to mount it to work with properly configured properties. To do so, use the mount method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { swipeBehavior } from '@telegram-apps/sdk';
+
+if (swipeBehavior.mount.isAvailable()) {
+  swipeBehavior.mount();
+  swipeBehavior.isMounted(); // true
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+swipeBehavior.unmount(); 
+swipeBehavior.isMounted(); // false
+Controlling Vertical Swipes
+To enable or disable vertical swipes, use the enableVertical and disableVertical methods. Calling these methods, update the isVerticalEnabled signal property value.
+
+
+Variable
+
+Functions
+
+if (swipeBehavior.enableVertical.isAvailable()) {
+  swipeBehavior.enableVertical();
+  swipeBehavior.isVerticalEnabled(); // true
+}
+
+if (swipeBehavior.disableVertical.isAvailable()) {
+  swipeBehavior.disableVertical();
+  swipeBehavior.isVerticalEnabled(); // false
+}
+, Theme Params
+The 💠component responsible for the Telegram Mini Apps theme parameters.
+
+Mounting
+Before using the component, it must be mounted.
+
+Actual sync mount
+
+To mount the component, use the mountSync method. It will update the isMounted signal property.
+
+
+Variable
+
+Functions
+
+import { themeParams } from '@telegram-apps/sdk';
+
+if (themeParams.mountSync.isAvailable()) {
+  themeParams.mountSync();
+  themeParams.isMounted(); // true
+}
+Deprecated async mount
+
+This process is asynchronous, as theme parameters need to be requested from the Telegram application. The isMounting signal will be set to true during the process and updated to false when complete.
+
+If mounting is successful, the isMounted signal will be set to true. If errors occur, the mountError signal will reflect the error.
+
+
+Variable
+
+Functions
+
+if (themeParams.mount.isAvailable()) {
+  try {
+    const promise = themeParams.mount();
+    themeParams.isMounting(); // true
+    await promise;
+    themeParams.isMounting(); // false
+    themeParams.isMounted(); // true
+  } catch (err) {
+    themeParams.mountError(); // equals "err"
+    themeParams.isMounting(); // false
+    themeParams.isMounted(); // false
+  }
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+themeParams.unmount(); 
+themeParams.isMounted(); // false
+Binding CSS Variables
+This scope allows its properties to be exposed via CSS variables.
+
+To create new CSS variables, use the bindCssVars method. When called, it updates the isCssVarsBound signal property.
+
+This method optionally accepts a function that receives a theme palette key in camel case format and returns a CSS variable name. By default, the method transforms the palette key using these rules:
+
+Converts the value to kebab case.
+Prepends the --tg-theme- prefix.
+
+Variable
+
+Functions
+
+if (themeParams.bindCssVars.isAvailable()) {
+  themeParams.bindCssVars();
+  // Creates CSS variables like:
+  // --tg-theme-button-color: #aabbcc
+  // --tg-theme-accent-text-color: #aabbcc
+  // --tg-theme-bg-color: #aabbcc
+  // ...
+
+  themeParams.bindCssVars(key => `--my-prefix-${key}`);
+  // Creates CSS variables like:
+  // --my-prefix-buttonColor: #aabbcc
+  // --my-prefix-accentTextColor: #aabbcc
+  // --my-prefix-bgColor: #aabbcc
+  // ...
+
+  // themeParams.isCssVarsBound() -> true
+}
+Properties
+
+Variable
+
+Functions
+
+themeParams.accentTextColor(); // RGB | undefined
+themeParams.backgroundColor(); // RGB | undefined
+themeParams.buttonTextColor(); // RGB | undefined
+themeParams.buttonColor(); // RGB | undefined
+themeParams.destructiveTextColor(); // RGB | undefined
+themeParams.headerBackgroundColor(); // RGB | undefined
+themeParams.hintColor(); // RGB | undefined
+themeParams.linkColor(); // RGB | undefined
+themeParams.subtitleTextColor(); // RGB | undefined
+themeParams.sectionBackgroundColor(); // RGB | undefined
+themeParams.secondaryBackgroundColor(); // RGB | undefined
+themeParams.sectionSeparatorColor(); // RGB | undefined
+themeParams.sectionHeaderTextColor(); // RGB | undefined
+themeParams.textColor(); // RGB | undefined
+
+themeParams.state(); // Record<string, RGB>;
+, Viewport
+The 💠component responsible for the Telegram Mini Apps viewport.
+
+Mounting
+Before using the component, it must be mounted.
+
+This process is asynchronous, as viewport information needs to be requested from the Telegram application. The isMounting signal will be set to true during the process and updated to false when complete.
+
+If mounting is successful, the isMounted signal will be set to true. If errors occur, the mountError signal will reflect the error.
+
+
+Variable
+
+Functions
+
+if (viewport.mount.isAvailable()) {
+  try {
+    const promise = viewport.mount();
+    viewport.isMounting(); // true
+    await promise;
+    viewport.isMounting(); // false
+    viewport.isMounted(); // true
+  } catch (err) {
+    viewport.mountError(); // equals "err"
+    viewport.isMounting(); // false
+    viewport.isMounted(); // false
+  }
+}
+To unmount, use the unmount method:
+
+
+Variable
+
+Functions
+
+viewport.unmount();
+viewport.isMounted(); // false
+Binding CSS Variables
+To expose the viewport properties via CSS variables, use the bindCssVars method. The isCssVarsBound signal property is updated after the method is called.
+
+This method optionally accepts a function that transforms the values width, height and stableHeight into CSS variable names. By default, values are converted to kebab case with the prefix --tg-viewport-.
+
+
+Variable
+
+Functions
+
+import { viewport } from '@telegram-apps/sdk';
+
+if (viewport.bindCssVars.isAvailable()) {
+  viewport.bindCssVars();
+  // Creates CSS variables like:
+  // --tg-viewport-height: 675px
+  // --tg-viewport-width: 320px
+  // --tg-viewport-stable-height: 675px
+
+  viewport.bindCssVars(key => `--my-prefix-${key}`);
+  // Creates CSS variables like:
+  // --my-prefix-height: 675px
+  // --my-prefix-width: 320px
+  // --my-prefix-stableHeight: 675px
+
+  viewport.isCssVarsBound(); // true
+}
+Expanding
+To expand the viewport, use the expand method.
+
+
+Variable
+
+Functions
+
+if (viewport.expand.isAvailable()) {
+  viewport.expand();
+}
+Fullscreen Mode
+To enable the fullscreen mode, the method requestFullscreen is used:
+
+
+Variable
+
+Functions
+
+if (viewport.requestFullscreen.isAvailable()) {
+  await viewport.requestFullscreen();
+  viewport.isFullscreen(); // true
+}
+To exit the fullscreen mode, use the exitFullscreen method:
+
+
+Variable
+
+Functions
+
+if (viewport.exitFullscreen.isAvailable()) {
+  await viewport.exitFullscreen();
+  viewport.isFullscreen(); // false
+}
+Safe Area Insets
+The viewport component offers access to two types of insets:
+
+Safe area insets
+Content safe area insets
+For more details on the differences between these inset types, visit the Viewport page.
+
+The component provides access to these insets through the following signals:
+
+
+Variable
+
+Functions
+
+// Objects with numeric properties "top", "bottom", "left" and "right".
+viewport.safeAreaInsets();
+viewport.contentSafeAreaInsets();
+
+// Numeric values.
+viewport.safeAreaInsetTop();
+viewport.safeAreaInsetBottom();
+viewport.safeAreaInsetLeft();
+viewport.safeAreaInsetRight();
+viewport.contentSafeAreaInsetTop();
+viewport.contentSafeAreaInsetBottom();
+viewport.contentSafeAreaInsetLeft();
+viewport.contentSafeAreaInsetRight();
+, Methods
+This article covers topics related to apps communication methods.
+
+Calling Methods
+To call Telegram Mini Apps methods, developers should use the postEvent function:
+
+
+import { postEvent } from '@telegram-apps/bridge';
+
+postEvent('web_app_setup_back_button', { is_visible: true });
+This function automatically determines the correct way to send the event based on the current environment. It identifies the Telegram app type and selects the appropriate flow.
+
+request
+The request function should be used when a developer needs to call a Telegram Mini Apps method and receive a specific event.
+
+For example, to call the web_app_request_viewport method and catch the viewport_changed event for actual viewport data:
+
+
+import { request } from '@telegram-apps/bridge';
+
+const viewport = await request(
+  'web_app_request_viewport',
+  'viewport_changed',
+);
+
+console.log(viewport);
+// Output:
+// {
+//   is_state_stable: true,
+//   is_expanded: false,
+//   height: 320
+// };
+If the Telegram Mini Apps method accepts parameters, they should be passed in the params property of the third argument:
+
+
+const buttonId = await request('web_app_open_popup', 'popup_closed', {
+  params: {
+    title: 'Caution',
+    message: 'Should we delete your account?',
+    buttons: [
+      { id: 'yes', type: 'ok' },
+      { id: 'no', type: 'cancel' },
+    ],
+  },
+});
+It is also allowed to track several events at the same time:
+
+
+const result = await request(
+  'web_app_open_scan_qr_popup',
+  ['qr_text_received', 'scan_qr_popup_closed'],
+);
+
+// The result will either be the qr_text_received 
+// or scan_qr_popup_closed event payload.
+This function allows passing additional options such as postEvent, abortSignal, timeout, and capture.
+
+postEvent
+The postEvent option allows a developer to override the method used to call the Telegram Mini Apps method.
+
+
+request('web_app_request_viewport', 'viewport_changed', {
+  postEvent() {
+    console.log('Hey, I am not going to do anything');
+  },
+});
+abortSignal
+To abort the returned promise externally, the abortSignal option is used.
+
+
+const controller = new AbortController();
+
+request('web_app_request_viewport', 'viewport_changed', {
+  abortSignal: controller.signal,
+});
+
+setTimeout(() => {
+  controller.abort(new Error('Not going to wait anymore'));
+}, 500);
+timeout
+The timeout option assigns a timeout to the request.
+
+
+import { request } from '@telegram-apps/bridge';
+
+try {
+  await request(
+    'web_app_invoke_custom_method',
+    'custom_method_invoked',
+    {
+      timeout: 5000,
+      params: {
+        req_id: '1',
+        method: 'deleteStorageValues',
+        params: { keys: ['a'] },
+      },
+    },
+  );
+} catch (e) {
+  console.error(e); // TypedError with e.type === 'ERR_TIMED_OUT'
+}
+capture
+The capture property is a function that allows developers to determine if an occurred Mini Apps event should be captured and returned from the request function:
+
+
+const slug = 'jjKSJnm1k23lodd';
+
+request('web_app_open_invoice', 'invoice_closed', {
+  params: { slug },
+  capture(data) {
+    return slug === data.slug;
+  },
+});
+By default, the request function captures the first event with the required name. In this case, the function will capture the event only if it has the expected slug, specific for the invoice_closed event.
+
+When passing an array of events, the capture function will receive an object with the event: EventName and payload?: EventPayload properties.
+
+Invoking Custom Methods
+Custom methods are those methods which can be used with the web_app_invoke_custom_method Mini Apps method.
+
+The invokeCustomMethod function simplifies the usage of such methods by reusing the request function.
+
+Here’s an example without using this function:
+
+
+const reqId = 'ABC';
+
+request('web_app_invoke_custom_method', 'custom_method_invoked', {
+  params: {
+    req_id: reqId,
+    method: 'deleteStorageValues',
+    params: { keys: ['a'] },
+  },
+  capture(data) {
+    return data.req_id === reqId;
+  }
+});
+Now, rewritten using the invokeCustomMethod function:
+
+
+import { invokeCustomMethod } from '@telegram-apps/bridge';
+
+invokeCustomMethod('deleteStorageValues', { keys: ['a'] }, 'ABC');
+Internally, it just encapsulates a specific logic related to the methods, so a developer shouldn't do it.
+
+Unlike the request function, the invokeCustomMethod function parses the result and checks if it contains the error property. If it does, the function throws the corresponding error; otherwise, the result property is returned.
+
+Checking Method Support
+The postEvent function does not check if the specified method is supported by the current Telegram app. To do this, the supports function is used.
+
+It accepts a Mini Apps method name and the current platform version:
+
+
+import { supports } from '@telegram-apps/bridge';
+
+supports('web_app_trigger_haptic_feedback', '6.0'); // false
+supports('web_app_trigger_haptic_feedback', '6.1'); // true
+The supports function also allows checking if a specific parameter in the method parameters is supported:
+
+
+import { supports } from '@telegram-apps/bridge';
+
+supports('web_app_open_link', 'try_instant_view', '6.0'); // false
+supports('web_app_open_link', 'try_instant_view', '6.7'); // true
+TIP
+
+It is recommended to use this function before calling Mini Apps methods to prevent apps from stalling or encountering unexpected behavior.
+
+Creating Safer postEvent
+This package includes a function named createPostEvent that takes the current Mini Apps version as input.
+
+It returns the postEvent function, which internally checks if the passed method and parameters are supported.
+
+
+import { createPostEvent } from '@telegram-apps/bridge';
+
+const postEvent = createPostEvent('6.5');
+
+// Will work fine.
+postEvent('web_app_read_text_from_clipboard');
+
+// Will throw an error, this method is not supported 
+// in Mini Apps version 6.5.
+postEvent('web_app_request_phone');
+As a second optional argument, the function accepts a callback that is called if the method or parameter is unsupported.
+
+
+createPostEvent('6.0', (data) => {
+  if ('param' in data) {
+    console.warn(
+      'Oops, the parameter', data.param,
+      'in method', data.method,
+      'is not supported',
+    );
+  } else {
+    console.warn('Oops, method', data.method, 'is not supported');
+  }
+});
+To log warnings instead of throwing errors, the 'non-strict' value can be passed:
+
+
+createPostEvent('6.0', 'non-strict');, Events
+This article covers topics related to apps communication events.
+
+Define Event Handlers
+To avoid side effects, this package does not call any functions upon import. Telegram Mini Apps require a specific way of communication between the native Telegram app and the mini application, which involves defining certain methods in the global window object.
+
+To enable this and start receiving Telegram Mini Apps events, use the defineEventHandlers function:
+
+
+import { defineEventHandlers } from '@telegram-apps/bridge';
+
+defineEventHandlers();
+This setup ensures that the mini app can properly interact with the native Telegram app by listening for and handling the necessary events.
+
+on and off
+To start working with events, the on and off functions are used.
+
+Here’s a basic example of the on function:
+
+
+import { on } from '@telegram-apps/bridge';
+
+// Start listening to the "viewport_changed" event. The returned value
+// is a function that removes this event listener.
+const removeListener = on('viewport_changed', (payload) => {
+  console.log('Viewport changed:', payload);
+});
+
+// Remove this event listener.
+removeListener();
+Alternatively, to stop listening to events, a developer can use the off function:
+
+
+import { on, off, type EventListener } from '@telegram-apps/bridge';
+
+const listener: EventListener<'viewport_changed'> = (payload) => {
+  console.log('Viewport changed:', payload);
+};
+
+// Start listening to the event.
+on('viewport_changed', listener);
+
+// Remove the event listener.
+off('viewport_changed', listener);
+To call the listener only once, the third boolean argument is used:
+
+
+import { on } from '@telegram-apps/bridge';
+
+// Will automatically be removed after the first listener execution.
+on('viewport_changed', (payload) => {
+  console.log('Viewport changed:', payload);
+}, true);
+subscribe and unsubscribe
+To listen to all events sent from the native Telegram application, the subscribe and unsubscribe functions are used:
+
+
+import {
+  subscribe,
+  unsubscribe,
+  type SubscribeListener,
+} from '@telegram-apps/bridge';
+
+const listener: SubscribeListener = (event) => {
+  console.log('Received event', event);
+};
+
+// Listen to all events.
+subscribe(listener);
+
+// Remove the listener.
+unsubscribe(listener);
+, Environment
+This package is designed to be used only inside the Telegram application. Since non-Telegram environments lack Telegram-specific traits, calling methods such as retrieveLaunchParams or postEvent will lead to errors.
+
+Nevertheless, the package provides utilities that help developers either develop the application outside of Telegram or determine if the current environment is not a Telegram Mini App at all.
+
+isTMA
+To check if the current environment is Telegram Mini Apps, a developer can use the isTMA function. It works in two modes: simple and complete.
+
+Simple
+In this mode, the function attempts to retrieve launch parameters from the environment.
+
+If the extraction is successful, the environment is considered Telegram Mini Apps. Simple mode is synchronous and returns a boolean value.
+
+
+import { isTMA } from '@telegram-apps/bridge';
+
+if (isTMA('simple')) {
+  console.log('It\'s Telegram Mini Apps');
+}
+This mode is somewhat superficial but may still be sufficient for most applications. For a more reliable check, use the complete mode.
+
+Complete
+In this mode, the function calls a Telegram Mini Apps-specific method and waits for a method-specific event to occur.
+
+
+import { isTMA } from '@telegram-apps/bridge';
+
+if (await isTMA()) {
+  console.log('It\'s Telegram Mini Apps');
+}
+The function waits for an event for 100 milliseconds, but a developer can change this time by passing an object with the timeout: number property.
+
+
+if (await isTMA({ timeout: 50 })) {
+  console.log('It\'s Telegram Mini Apps');
+}
+mockTelegramEnv
+The package provides the mockTelegramEnv function, which imitates the environment provided by Telegram. It helps developers start building applications even without creating a mini app record in BotFather.
+
+This function accepts launch parameters in raw or parsed format. Here is an example:
+
+
+mockTelegramEnv({
+  themeParams: {
+    accentTextColor: '#6ab2f2',
+    bgColor: '#17212b',
+    buttonColor: '#5288c1',
+    buttonTextColor: '#ffffff',
+    destructiveTextColor: '#ec3942',
+    headerBgColor: '#17212b',
+    hintColor: '#708499',
+    linkColor: '#6ab3f3',
+    secondaryBgColor: '#232e3c',
+    sectionBgColor: '#17212b',
+    sectionHeaderTextColor: '#6ab3f3',
+    subtitleTextColor: '#708499',
+    textColor: '#f5f5f5',
+  },
+  initData: {
+    user: {
+      id: 99281932,
+      firstName: 'Andrew',
+      lastName: 'Rogue',
+      username: 'rogue',
+      languageCode: 'en',
+      isPremium: true,
+      allowsWriteToPm: true,
+    },
+    hash: '89d6079ad6762351f38c6dbbc41bb53048019256a9443988af7a48bcad16ba31',
+    authDate: new Date(1716922846000),
+    signature: 'abc',
+    startParam: 'debug',
+    chatType: 'sender',
+    chatInstance: '8428209589180549439',
+  },
+  initDataRaw: new URLSearchParams([
+    ['user', JSON.stringify({
+      id: 99281932,
+      first_name: 'Andrew',
+      last_name: 'Rogue',
+      username: 'rogue',
+      language_code: 'en',
+      is_premium: true,
+      allows_write_to_pm: true,
+    })],
+    ['hash', '89d6079ad6762351f38c6dbbc41bb53048019256a9443988af7a48bcad16ba31'],
+    ['auth_date', '1716922846'],
+    ['start_param', 'debug'],
+    ['signature', 'abc'],
+    ['chat_type', 'sender'],
+    ['chat_instance', '8428209589180549439'],
+  ]).toString(),
+  version: '7.2',
+  platform: 'tdesktop',
+});
+WARNING
+
+This function only imitates Telegram environment behavior. It doesn't send any real requests or perform actions that will only be visible in the Telegram application.
+
+, Launch Parameters
+Launch parameters are essential to the mini application lifecycle. To learn more about what launch parameters are and their importance, it is worth reading this article.
+
+This package allows a developer to extract launch parameters from the current environment using the retrieveLaunchParams function. It tries to retrieve them from all possible sources, and if it fails, an error will be thrown.
+
+
+import { retrieveLaunchParams } from '@telegram-apps/bridge';
+
+const launchParams = retrieveLaunchParams();
+, Globals
+By globals, we mean global values used across methods in the package.
+
+$debug
+The $debug signal is responsible for enabling or disabling additional debug logs.
+
+
+import { $debug } from '@telegram-apps/bridge';
+
+$debug.set(true);
+After setting it to true, you will see logs when calling the postEvent function or receiving Mini Apps events.
+
+$targetOrigin
+If the package is used in a browser environment (iframe), it employs the window.parent.postMessage function. This function requires specifying the target origin to ensure events are only sent to trusted parent iframes. By default, the package uses https://web.telegram.org as the origin.
+
+
+import { $targetOrigin } from '@telegram-apps/bridge';
+
+$targetOrigin.set('https://i-know-what-i-am.doing');
+WARNING
+
+It is strongly recommended not to override this value, as it could lead to security issues. Specify this value only when you are certain of its impact.
+
+Fullscreen Mode
+To enable the fullscreen mode, the method requestFullscreen is used:
+
+
+Variable
+
+Functions
+
+import { requestFullscreen, isFullscreen } from '@telegram-apps/sdk';
+
+if (requestFullscreen.isAvailable()) {
+  await requestFullscreen();
+  isFullscreen(); // true
+}, Fullscreen Mode
+To enable the fullscreen mode, the method requestFullscreen is used:
+
+
+Variable
+
+Functions
+
+if (viewport.requestFullscreen.isAvailable()) {
+  await viewport.requestFullscreen();
+  viewport.isFullscreen(); // true
+}, To exit the fullscreen mode, use the exitFullscreen method:
+
+
+Variable
+
+Functions
+
+if (viewport.exitFullscreen.isAvailable()) {
+  await viewport.exitFullscreen();
+  viewport.isFullscreen(); // false
+}, To exit the fullscreen mode, use the exitFullscreen method:
+
+
+Variable
+
+Functions
+
+import { exitFullscreen, isFullscreen } from '@telegram-apps/sdk';
+
+if (exitFullscreen.isAvailable()) {
+  await exitFullscreen();
+  isFullscreen(); // false
+}, 
