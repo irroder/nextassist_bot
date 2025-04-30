@@ -125,3 +125,43 @@ button:active,
 .categories-item:active {
 	opacity: 0.8;
 }
+
+.categories-item {
+	position: relative;
+	padding: 0.6rem 1rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.categories-item:not(:last-child)::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 3.5rem;
+	right: 0;
+	height: 1px;
+	background-color: #333;
+}
+
+.categories-item .category-content {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.categories-item .category-content .icon-wrapper {
+	width: 2rem;
+	height: 2rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.375rem;
+}
+
+.categories-item .category-content .text {
+	font-size: 0.875rem;
+	color: #fff;
+}
