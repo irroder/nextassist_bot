@@ -14,6 +14,7 @@
   Star,
   Plus,
  } from "lucide-react";
+import "./index.css";
 
  const categories = [
   { name: "All", icon: <CalendarDays />, color: "bg-blue-500" },
