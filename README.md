@@ -1,56 +1,55 @@
-# NextAssist Bot
+# React + TypeScript + Vite
 
-Telegram Mini App для управления задачами и проектами. Приложение построено с использованием React, TypeScript и Telegram Mini Apps SDK.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Особенности
+Currently, two official plugins are available:
 
--   Управление задачами в стиле Kanban
--   Интеграция с Telegram Mini Apps
--   Поддержка темной и светлой темы
--   Адаптивный дизайн
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Технологии
+## Expanding the ESLint configuration
 
--   React
--   TypeScript
--   Vite
--   Telegram Mini Apps SDK
--   Tailwind CSS
--   Zustand (управление состоянием)
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-## Установка и запуск
-
-1. Клонируйте репозиторий:
-
-```bash
-git clone https://github.com/irroder/nextassist_bot.git
-cd nextassist_bot
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
 
-2. Установите зависимости:
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-```bash
-npm install
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default tseslint.config({
+  plugins: {
+    // Add the react-x and react-dom plugins
+    'react-x': reactX,
+    'react-dom': reactDom,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended typescript rules
+    ...reactX.configs['recommended-typescript'].rules,
+    ...reactDom.configs.recommended.rules,
+  },
+})
 ```
-
-3. Запустите сервер разработки:
-
-```bash
-npm run dev
-```
-
-4. Откройте приложение в браузере:
-
-```
-https://localhost:443
-```
-
-## Настройка для Telegram Mini App
-
-1. Создайте бота через [@BotFather](https://t.me/BotFather)
-2. Настройте мини-приложение, указав URL вашего приложения
-3. Используйте токен бота для взаимодействия с Telegram API
-
-## Лицензия
-
-MIT
+# nextassist_bot
