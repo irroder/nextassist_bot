@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
 	Inbox,
 	CalendarDays,
@@ -17,12 +17,24 @@ import { init, viewport } from "@telegram-apps/sdk";
 import "./index.css";
 
 const categories = [
-	{ name: "All", icon: <CalendarDays />, color: "bg-blue-500" },
-	{ name: "Inbox", icon: <Inbox />, color: "bg-orange-500" },
-	{ name: "Today", icon: <CalendarCheck />, color: "bg-green-500" },
-	{ name: "Tomorrow", icon: <CalendarClock />, color: "bg-red-500" },
-	{ name: "Next 7 Days", icon: <CalendarDays />, color: "bg-purple-400" },
-	{ name: "Completed", icon: <CheckCircle />, color: "bg-gray-500" },
+	{ name: "All", icon: <CalendarDays size={18} />, color: "bg-blue-500" },
+	{ name: "Inbox", icon: <Inbox size={18} />, color: "bg-orange-500" },
+	{ name: "Today", icon: <CalendarCheck size={18} />, color: "bg-green-500" },
+	{
+		name: "Tomorrow",
+		icon: <CalendarClock size={18} />,
+		color: "bg-red-500",
+	},
+	{
+		name: "Next 7 Days",
+		icon: <CalendarDays size={18} />,
+		color: "bg-purple-400",
+	},
+	{
+		name: "Completed",
+		icon: <CheckCircle size={18} />,
+		color: "bg-gray-500",
+	},
 ];
 
 export default function App() {
@@ -30,174 +42,131 @@ export default function App() {
 	const [taskInput, setTaskInput] = useState("");
 
 	useEffect(() => {
-		// Инициализация viewport и мета-тегов
-		const initializeApp = async () => {
-			// Добавляем viewport meta tag для мобильных устройств
-			const meta = document.createElement("meta");
-			meta.name = "viewport";
-			meta.content =
-				"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
-			document.head.appendChild(meta);
-
-			// Инициализация Telegram SDK
+		const initialize = async () => {
 			await init();
 
-			// Установка высоты viewport
-			const setViewportHeight = () => {
+			// Устанавливаем правильную высоту
+			const setAppHeight = () => {
 				document.documentElement.style.setProperty(
-					"--tg-viewport-height",
+					"--app-height",
 					`${window.innerHeight}px`
 				);
 			};
-
-			setViewportHeight();
-			window.addEventListener("resize", setViewportHeight);
+			window.addEventListener("resize", setAppHeight);
+			setAppHeight();
 
 			// Инициализация полноэкранного режима
-			const enableFullscreen = async () => {
-				try {
-					if (viewport.requestFullscreen.isAvailable()) {
-						await new Promise((resolve) =>
-							setTimeout(resolve, 100)
-						);
+			if (viewport.requestFullscreen.isAvailable()) {
+				setTimeout(async () => {
+					try {
 						await viewport.requestFullscreen();
+					} catch (e) {
+						console.error("Fullscreen error:", e);
 					}
-				} catch (error) {
-					console.error("Fullscreen error:", error);
-				}
-			};
-
-			await enableFullscreen();
-
-			return () => {
-				window.removeEventListener("resize", setViewportHeight);
-			};
+				}, 300);
+			}
 		};
 
-		initializeApp();
+		initialize();
 	}, []);
 
-	const toggleAddTask = (e: React.MouseEvent) => {
-		if (
-			e.target === e.currentTarget ||
-			(e.target as HTMLElement).closest(".button-content")
-		) {
-			setShowAddTask(!showAddTask);
-		}
+	const toggleAddTask = () => {
+		setShowAddTask(!showAddTask);
 	};
 
 	return (
 		<div className="app-container">
-			<div className="flex justify-between items-center mb-4">
-				<div className="flex items-center gap-2">
-					<div className="w-8 h-8 rounded-full bg-red-500"></div>
-					<div className="flex items-center gap-1 px-2 py-1 rounded">
-						<span className="font-semibold">Řemmǿřë</span>
-						<ChevronRight className="w-4 h-4 text-gray-400" />
+			{/* Header */}
+			<div className="header">
+				<div className="user-info">
+					<div className="avatar"></div>
+					<div className="username">
+						<span>Řemmǿřë</span>
+						<ChevronRight className="chevron" />
 					</div>
 				</div>
 			</div>
 
-			<div className="bg-[#000000] rounded-xl p-4 flex items-center gap-3 mb-4 cursor-pointer">
-				<div>
-					<p className="pl-6 font-medium text-white">
-						Add to group chat
-					</p>
-					<p className="pl-6 text-sm text-gray-400">
+			{/* Group Chat Section */}
+			<div className="group-chat-section">
+				<div className="group-chat-content">
+					<p className="group-chat-title">Add to group chat</p>
+					<p className="group-chat-description">
 						A collaborative project is created by adding the bot to
 						a Telegram group
 					</p>
 				</div>
-				<span className="ml-auto text-sm text-gray-400">1/2</span>
-				<ChevronRight className="ml-2 w-4 h-4 text-gray-400" />
+				<div className="group-chat-meta">
+					<span>1/2</span>
+					<ChevronRight className="chevron" />
+				</div>
 			</div>
 
-			<div
-				className={`add-task-button mb-4 ${showAddTask ? "open" : ""}`}
-				onClick={toggleAddTask}
-			>
-				<div className="button-content pl-4">
+			{/* Add Task Section */}
+			<div className="add-task-section">
+				<div className="add-task-header" onClick={toggleAddTask}>
 					<div
-						className={`p-1.5 rounded-md ${
-							showAddTask ? "bg-transparent" : "bg-[#000000]"
-						}`}
+						className={`add-task-icon ${showAddTask ? "open" : ""}`}
 					>
-						<Plus className="text-gray-400 plus-icon" />
+						<Plus className="plus-icon" />
 					</div>
-					<span className="text-sm">Add Task</span>
+					<span>Add Task</span>
 				</div>
 
-				<div
-					className="form-content"
-					onClick={(e) => e.stopPropagation()}
-				>
-					<input
-						type="text"
-						placeholder="Add task"
-						className="w-full bg-[#000000] text-white p-3 rounded-lg focus:outline-none placeholder-gray-500 mb-3"
-						value={taskInput}
-						onChange={(e) => setTaskInput(e.target.value)}
-					/>
-					<div className="flex justify-between items-center text-gray-400 mb-3">
-						<div className="flex gap-4 items-center">
-							<button className="flex items-center gap-1 text-blue-400 bg-[#000000] px-2 py-1 rounded-md text-xs">
-								<CalendarPlus className="w-4 h-4" /> Today
-							</button>
-							<button className="text-gray-400 bg-[#000000] p-1 rounded-md">
-								<Repeat className="w-4 h-4" />
-							</button>
-						</div>
-						<div className="flex gap-3 items-center">
-							<button className="text-gray-400 bg-[#000000] p-1 rounded-md">
-								<Flag className="w-4 h-4" />
-							</button>
-							<button className="text-gray-400 bg-[#000000] p-1 rounded-md">
-								<AlertCircle className="w-4 h-4" />
-							</button>
-							<div className="flex items-center gap-1 bg-purple-600 px-1.5 py-0.5 rounded text-white text-xs">
-								<Star className="w-3 h-3" /> Pro
+				{showAddTask && (
+					<div className="task-form">
+						<input
+							type="text"
+							placeholder="Add task"
+							value={taskInput}
+							onChange={(e) => setTaskInput(e.target.value)}
+						/>
+						<div className="form-controls">
+							<div className="controls-left">
+								<button>
+									<CalendarPlus /> Today
+								</button>
+								<button>
+									<Repeat />
+								</button>
+							</div>
+							<div className="controls-right">
+								<button>
+									<Flag />
+								</button>
+								<button>
+									<AlertCircle />
+								</button>
+								<div className="pro-badge">
+									<Star /> Pro
+								</div>
 							</div>
 						</div>
-					</div>
-					<div className="flex items-center justify-between bg-[#000000] p-2 rounded-lg">
-						<div className="flex items-center gap-2">
-							<Inbox className="w-5 h-5 text-orange-500" />
-							<span className="text-sm text-white">Inbox</span>
+						<div className="task-category">
+							<div>
+								<Inbox /> Inbox
+							</div>
+							<button className="submit-button">
+								<svg /* иконка отправки */ />
+							</button>
 						</div>
-						<button className="bg-blue-500 text-white p-1.5 rounded-full w-7 h-7 flex items-center justify-center">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2.5"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							>
-								<line x1="22" y1="2" x2="11" y2="13"></line>
-								<polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-							</svg>
-						</button>
 					</div>
-				</div>
+				)}
 			</div>
 
-			<div className="bg-[#000000] rounded-xl pl-3 pr-3 pt-1 pb-1 space-y-1">
+			{/* Categories List */}
+			<div className="categories-list">
 				{categories.map((cat, i) => (
-					<div key={i} className="categories-item">
-						<div className="category-content">
-							<div className={`${cat.color} icon-wrapper`}>
-								{React.cloneElement(cat.icon, {
-									className: "text-white w-4 h-4",
-								})}
+					<div key={i} className="category-item">
+						<div className="category-info">
+							<div className={`category-icon ${cat.color}`}>
+								{cat.icon}
 							</div>
-							<span className="text">{cat.name}</span>
+							<span>{cat.name}</span>
 						</div>
-						<div className="flex items-center gap-2 text-gray-500">
-							<span className="text-xs">1</span>
-							<ChevronRight className="w-3 h-3" />
+						<div className="category-meta">
+							<span>1</span>
+							<ChevronRight className="chevron" />
 						</div>
 					</div>
 				))}
