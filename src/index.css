@@ -4,12 +4,40 @@
   overscroll-behavior: none;
 }
 
-.slide-in {
- animation: slideIn 0.5s ease-in-out forwards;
+/* Добавьте это в ваш CSS файл */
+.add-task-form-container {
+  overflow: hidden; /* Скрывает содержимое, выходящее за пределы высоты */
+  transition: max-height 0.4s ease-in-out, opacity 0.3s ease-in-out 0.1s, padding 0.4s ease-in-out, margin-bottom 0.4s ease-in-out; /* Плавные переходы для высоты, прозрачности, отступов */
+  max-height: 0; /* Начальная высота 0, чтобы скрыть */
+  opacity: 0;  /* Начальная прозрачность 0 */
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0; /* Убираем отступ снизу в закрытом состоянии */
+  background-color: #1c1c1c; /* Цвет фона как у кнопки, чтобы выглядело как её расширение */
+  border-radius: 0.75rem; /* Такие же скругленные углы, как у кнопки */
 }
 
-.slide-out {
- animation: slideOut 0.5s ease-in-out forwards;
+.add-task-form-container.open {
+  max-height: 500px; /* Максимальная высота в открытом состоянии (убедитесь, что она больше реальной высоты контента) */
+  opacity: 1; /* Полная прозрачность в открытом состоянии */
+  padding: 1rem; /* Возвращаем внутренние отступы */
+  margin-bottom: 0.75rem; /* Возвращаем отступ снизу */
 }
 
-@keyframes slideIn
+/* Стили для кнопки "Add Task", чтобы она выглядела одинаково с контейнером */
+.add-task-button {
+  display: flex;
+  align-items: center;
+  background-color: #1c1c1c; /* Цвет фона */
+  padding: 0.75rem; /* Внутренний отступ */
+  border-radius: 0.75rem; /* Скругление углов */
+  cursor: pointer;
+  margin-bottom: 0.75rem; /* Отступ снизу */
+  transition: margin-bottom 0.4s ease-in-out; /* Анимация отступа */
+}
+
+.add-task-button.open {
+  margin-bottom: 0; /* Убираем отступ, когда форма открыта */
+  border-bottom-left-radius: 0; /* Убираем скругление снизу слева */
+  border-bottom-right-radius: 0; /* Убираем скругление снизу справа */
+}
