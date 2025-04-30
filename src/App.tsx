@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	Inbox,
 	CalendarDays,
@@ -13,6 +13,7 @@ import {
 	Star,
 	Plus,
 } from "lucide-react";
+import { init, viewport, miniApp } from "@telegram-apps/sdk";
 import "./index.css";
 
 const categories = [
@@ -27,6 +28,53 @@ const categories = [
 export default function App() {
 	const [showAddTask, setShowAddTask] = useState(false);
 	const [taskInput, setTaskInput] = useState("");
+	const [isFullscreen, setIsFullscreen] = useState(false);
+
+	useEffect(() => {
+		// Инициализация SDK
+		init();
+
+		// Монтируем компоненты
+		if (viewport.mount.isAvailable()) {
+			viewport.mount();
+		}
+
+		if (miniApp.mountSync.isAvailable()) {
+			miniApp.mountSync();
+		}
+
+		// Привязываем CSS переменные
+		if (viewport.bindCssVars.isAvailable()) {
+			viewport.bindCssVars();
+		}
+
+		// Слушаем изменения полноэкранного режима
+		const checkFullscreen = () => {
+			setIsFullscreen(viewport.isFullscreen());
+		};
+
+		// Проверяем состояние при монтировании
+		checkFullscreen();
+
+		// Создаем интервал для проверки состояния
+		const interval = setInterval(checkFullscreen, 100);
+
+		return () => {
+			clearInterval(interval);
+		};
+	}, []);
+
+	const toggleFullscreen = async () => {
+		if (isFullscreen) {
+			if (viewport.exitFullscreen.isAvailable()) {
+				await viewport.exitFullscreen();
+			}
+		} else {
+			if (viewport.requestFullscreen.isAvailable()) {
+				await viewport.requestFullscreen();
+			}
+		}
+	};
 
 	const toggleAddTask = (e: React.MouseEvent) => {
 		if (
@@ -47,6 +95,12 @@ export default function App() {
 						<ChevronRight className="w-4 h-4 text-gray-400" />
 					</div>
 				</div>
+				<button
+					onClick={toggleFullscreen}
+					className="text-gray-400 bg-[#000000] p-2 rounded-md"
+				>
+					{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+				</button>
 			</div>
 
 			<div className="bg-[#000000] rounded-xl p-4 flex items-center gap-3 mb-4 cursor-pointer">
