@@ -26,7 +26,7 @@
 
 html {
 	height: 100%;
-	overflow-x: hidden;
+	overflow: hidden;
 }
 
 body {
@@ -43,6 +43,7 @@ body {
 	flex-direction: column;
 	padding-top: var(--safe-area-inset-top);
 	padding-bottom: var(--safe-area-inset-bottom);
+	overflow: hidden;
 }
 
 #root {
@@ -62,7 +63,7 @@ body {
 	overflow-x: hidden;
 	padding-top: max(16px, var(--safe-area-inset-top));
 	padding-bottom: max(16px, var(--safe-area-inset-bottom));
-	margin-top: 8vh;
+	margin-top: 10vh;
 }
 
 /* Header Styles */
