@@ -43,43 +43,48 @@ export default function App() {
 
 	useEffect(() => {
 		const initialize = async () => {
-			// Initialize SDK
-			init();
+			await init();
 
-			// Set app height
+			// Фикс для мобильного viewport
 			const setAppHeight = () => {
-				document.documentElement.style.setProperty(
+				const doc = document.documentElement;
+				doc.style.setProperty(
 					"--app-height",
 					`${window.innerHeight}px`
 				);
+				doc.style.setProperty(
+					"--tg-viewport-height",
+					`${window.innerHeight}px`
+				);
 			};
+
 			window.addEventListener("resize", setAppHeight);
 			setAppHeight();
 
-			// Initialize viewport and request fullscreen
+			// Инициализация viewport
 			if (viewport.mount.isAvailable()) {
 				try {
 					await viewport.mount();
 					viewport.bindCssVars();
 					viewport.expand();
 
-					// Request fullscreen after a short delay to ensure everything is ready
-					if (viewport.requestFullscreen.isAvailable()) {
-						setTimeout(async () => {
-							try {
-								await viewport.requestFullscreen();
-							} catch (e) {
-								console.error("Fullscreen error:", e);
-							}
-						}, 300);
-					}
+					// Задержка для стабилизации перед полноэкранным режимом
+					setTimeout(async () => {
+						if (viewport.requestFullscreen.isAvailable()) {
+							await viewport.requestFullscreen();
+						}
+					}, 200);
 				} catch (err) {
-					console.error("Viewport mounting error:", err);
+					console.error("Viewport error:", err);
 				}
 			}
 		};
 
 		initialize();
+
+		return () => {
+			window.removeEventListener("resize", () => {});
+		};
 	}, []);
 
 	const toggleAddTask = () => {
