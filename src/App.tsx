@@ -43,9 +43,10 @@ export default function App() {
 
 	useEffect(() => {
 		const initialize = async () => {
-			await init();
+			// Initialize SDK
+			init();
 
-			// Устанавливаем правильную высоту
+			// Set app height
 			const setAppHeight = () => {
 				document.documentElement.style.setProperty(
 					"--app-height",
@@ -55,15 +56,26 @@ export default function App() {
 			window.addEventListener("resize", setAppHeight);
 			setAppHeight();
 
-			// Инициализация полноэкранного режима
-			if (viewport.requestFullscreen.isAvailable()) {
-				setTimeout(async () => {
-					try {
-						await viewport.requestFullscreen();
-					} catch (e) {
-						console.error("Fullscreen error:", e);
+			// Initialize viewport and request fullscreen
+			if (viewport.mount.isAvailable()) {
+				try {
+					await viewport.mount();
+					viewport.bindCssVars();
+					viewport.expand();
+
+					// Request fullscreen after a short delay to ensure everything is ready
+					if (viewport.requestFullscreen.isAvailable()) {
+						setTimeout(async () => {
+							try {
+								await viewport.requestFullscreen();
+							} catch (e) {
+								console.error("Fullscreen error:", e);
+							}
+						}, 300);
 					}
-				}, 300);
+				} catch (err) {
+					console.error("Viewport mounting error:", err);
+				}
 			}
 		};
 
