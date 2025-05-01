@@ -19,6 +19,7 @@
 
 * {
 	box-sizing: border-box;
+	overscroll-behavior-y: none;
 	margin: 0;
 	padding: 0;
 	-webkit-tap-highlight-color: transparent;
@@ -26,7 +27,6 @@
 
 html {
 	height: 100%;
-	overflow: hidden;
 }
 
 body {
@@ -43,7 +43,6 @@ body {
 	flex-direction: column;
 	padding-top: var(--safe-area-inset-top);
 	padding-bottom: var(--safe-area-inset-bottom);
-	overflow: hidden;
 }
 
 #root {
